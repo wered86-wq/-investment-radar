@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A1628">
+<title>K-Stock Tracker</title>
+<link rel="manifest" id="manifest-link">
+<style>
+:root {
+  --bg: #0A1628;
+  --bg2: #0F1F3D;
+  --bg3: #162440;
+  --card: #142035;
+  --card2: #1A2B48;
+  --border: rgba(255,255,255,0.07);
+  --green: #00C896;
+  --green2: #00A87A;
+  --green-dim: rgba(0,200,150,0.12);
+  --red: #FF5B5B;
+  --red-dim: rgba(255,91,91,0.12);
+  --amber: #FFB800;
+  --amber-dim: rgba(255,184,0,0.12);
+  --blue: #4B9EFF;
+  --blue-dim: rgba(75,158,255,0.12);
+  --purple: #A78BFA;
+  --purple-dim: rgba(167,139,250,0.12);
+  --text1: #F0F4FF;
+  --text2: #8899BB;
+  --text3: #4A6080;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text1); font-family: 'Samsung One', -apple-system, 'Pretendard', sans-serif; overscroll-behavior: none; }
+body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+/* ── Header ── */
+#header {
+  padding: calc(var(--safe-top) + 14px) 18px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; position: relative; z-index: 10;
+}
+.app-logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--green), #006B50); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.app-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+.app-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+#header-date { font-size: 11px; color: var(--text3); text-align: right; }
+
+/* ── Tabs ── */
+#tabs {
+  display: flex; background: var(--bg2); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; padding: 0 4px;
+}
+.tab-btn {
+  flex: 1; padding: 11px 4px; font-size: 13px; color: var(--text2);
+  border: none; background: transparent; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* ── Scroll Area ── */
+#scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 14px 14px calc(var(--safe-bot) + 90px);
+  overscroll-behavior: contain;
+}
+
+/* ── Run Button (fixed bottom) ── */
+#run-wrap {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 10px 16px calc(var(--safe-bot) + 10px);
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: 20;
+}
+#run-btn {
+  width: 100%; padding: 16px; border-radius: 16px; border: none;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.2px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform 0.15s, opacity 0.15s;
+  background: linear-gradient(135deg, var(--green), var(--green2));
+  color: #fff; box-shadow: 0 8px 32px rgba(0,200,150,0.3);
+}
+#run-btn:active { transform: scale(0.97); opacity: 0.9; }
+#run-btn:disabled { background: var(--card2); color: var(--text3); box-shadow: none; }
+
+/* ── Cards ── */
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px; margin-bottom: 12px; overflow: hidden;
+}
+.card.highlight { border-color: rgba(0,200,150,0.4); box-shadow: 0 0 20px rgba(0,200,150,0.08); }
+.sec-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+/* ── Market Bar ── */
+.market-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+.market-idx { }
+.market-name { font-size: 11px; color: var(--text3); }
+.market-val { font-size: 22px; font-weight: 700; letter-spacing: -1px; }
+.market-chg { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.up { color: var(--green); }
+.dn { color: var(--red); }
+.mkt-sum { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-amber { background: var(--amber-dim); color: var(--amber); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); }
+.badge-gray { background: rgba(255,255,255,0.06); color: var(--text2); }
+.badges-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+
+/* ── Sector Bars ── */
+.sector-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.sector-rank { font-size: 11px; color: var(--text3); width: 14px; text-align: center; flex-shrink: 0; }
+.sector-name { font-size: 12px; font-weight: 500; width: 60px; flex-shrink: 0; }
+.sector-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.sector-bar { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+.sector-val { font-size: 12px; font-weight: 600; width: 70px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+/* ── Stock Items ── */
+.stock-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.stock-item:last-child { border-bottom: none; padding-bottom: 0; }
+.stock-rank { font-size: 20px; font-weight: 800; width: 22px; flex-shrink: 0; color: var(--text3); }
+.stock-rank.r1 { color: var(--green); }
+.stock-rank.r2 { color: var(--amber); }
+.stock-info { flex: 1; min-width: 0; }
+.stock-name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stock-code { font-size: 11px; color: var(--text3); font-weight: 400; }
+.stock-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.stock-badges { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.stock-amount { text-align: right; flex-shrink: 0; }
+.stock-net { font-size: 15px; font-weight: 700; color: var(--green); }
+.stock-ratio { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ── DART ── */
+.dart-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.dart-item:last-child { border-bottom: none; }
+.dart-dot { width: 3px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+.dart-body { flex: 1; }
+.dart-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.dart-inst { font-size: 14px; font-weight: 700; color: var(--text1); }
+.dart-arrow { color: var(--green); font-size: 14px; font-weight: 600; }
+.dart-stock { font-size: 14px; color: var(--green); font-weight: 600; }
+.dart-meta { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.dart-note { font-size: 12px; color: var(--text2); }
+
+/* ── Recommendation ── */
+.rec-card { background: var(--card2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 8px; }
+.rec-card.top { border-color: rgba(0,200,150,0.35); background: linear-gradient(135deg, rgba(0,200,150,0.06), var(--card2)); }
+.rec-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.score-ring-wrap { flex-shrink: 0; }
+.rec-name-wrap { flex: 1; }
+.rec-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.rec-sector { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.rec-signals { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.signal-chip { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,0.06); color: var(--text2); border: 1px solid var(--border); }
+.rec-reason { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 8px; }
+.rec-risk { font-size: 12px; padding: 8px 10px; background: var(--amber-dim); color: var(--amber); border-radius: 9px; line-height: 1.6; }
+
+/* ── Additional Signals ── */
+.sig-row { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.sig-row:last-child { border-bottom: none; }
+.sig-type { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: var(--purple-dim); color: var(--purple); white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.sig-val { font-size: 13px; font-weight: 500; color: var(--text1); }
+.sig-interp { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ── News ── */
+.news-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); text-decoration: none; }
+.news-item:last-child { border-bottom: none; }
+.news-stock-badge { flex-shrink: 0; margin-top: 2px; }
+.news-body { flex: 1; min-width: 0; }
+.news-headline { font-size: 13px; color: var(--text1); line-height: 1.5; }
+.news-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.news-arrow { color: var(--green); font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Score Ring SVG ── */
+svg.score-ring text { font-family: monospace; }
+
+/* ── History ── */
+.hist-summary { background: var(--card2); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.freq-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.freq-name { font-size: 13px; flex: 1; font-weight: 500; }
+.freq-bar-wrap { width: 100px; height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; }
+.freq-bar { height: 100%; background: var(--green); border-radius: 3px; }
+.freq-count { font-size: 11px; color: var(--text3); width: 40px; text-align: right; }
+.hist-day { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+.hist-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.hist-date { font-size: 13px; font-weight: 600; }
+.hist-kospi { font-size: 12px; color: var(--text2); }
+.hist-summary-text { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 7px; }
+.hist-recs { display: flex; flex-wrap: wrap; gap: 4px; }
+.hist-rec-chip { font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+
+/* ── Loading State ── */
+#loading-overlay { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 18px; }
+#loading-overlay.show { display: flex; }
+.load-spinner { width: 40px; height: 40px; border: 3px solid rgba(0,200,150,0.2); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.load-steps { text-align: center; }
+.load-step-text { font-size: 15px; font-weight: 600; color: var(--text1); }
+.load-step-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+.load-dots { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+.load-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-dot 1.4s ease-in-out infinite; }
+.load-dot:nth-child(2) { animation-delay: 0.2s; }
+.load-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Empty State ── */
+#empty { text-align: center; padding: 60px 24px; }
+.empty-icon { font-size: 56px; margin-bottom: 18px; }
+.empty-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.empty-sub { font-size: 14px; color: var(--text2); line-height: 1.7; }
+
+/* ── Error ── */
+.error-box { background: var(--red-dim); border: 1px solid rgba(255,91,91,0.3); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--red); line-height: 1.6; margin-bottom: 12px; }
+
+/* ── Disclaimer ── */
+.disclaimer { font-size: 11px; color: var(--text3); text-align: center; line-height: 1.7; margin-top: 4px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-dot { 0%,80%,100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fadeUp 0.35s ease forwards; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div id="header">
+  <div class="app-logo">
+    <div class="logo-icon">📡</div>
+    <div>
+      <div class="app-name">K-Stock Tracker</div>
+      <div class="app-sub">외국인 매수 · DART 공시 AI 분석</div>
+    </div>
+  </div>
+  <div id="header-date"></div>
+</div>
+
+<!-- ── Tabs ── -->
+<div id="tabs">
+  <button class="tab-btn active" onclick="switchTab('today')" id="tab-today">📅 오늘 분석</button>
+  <button class="tab-btn" onclick="switchTab('history')" id="tab-history">📈 히스토리</button>
+</div>
+
+<!-- ── Main Scroll ── -->
+<div id="scroll">
+
+  <!-- Today Tab -->
+  <div id="pane-today">
+    <div id="loading-overlay">
+      <div class="load-spinner"></div>
+      <div class="load-steps">
+        <div class="load-step-text" id="step-text">데이터 수집 중...</div>
+        <div class="load-step-sub" id="step-sub">잠시 기다려 주세요</div>
+      </div>
+      <div class="load-dots">
+        <div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div>
+      </div>
+    </div>
+
+    <div id="empty">
+      <div class="empty-icon">📡</div>
+      <div class="empty-title">분석 준비 완료</div>
+      <div class="empty-sub">아래 실행 버튼을 누르면<br>외국인 매수, DART 공시,<br>AI 종합 추천이 실시간으로 분석됩니다</div>
+    </div>
+
+    <div id="error-area"></div>
+    <div id="result-area" style="display:none"></div>
+  </div>
+
+  <!-- History Tab -->
+  <div id="pane-history" style="display:none">
+    <div id="history-content"></div>
+  </div>
+</div>
+
+<!-- ── Run Button ── -->
+<div id="run-wrap">
+  <button id="run-btn" onclick="runAnalysis()">
+    <span>▶</span> <span id="btn-text">지금 분석 실행</span>
+  </button>
+</div>
+
+<script>
+// ───────────── Manifest Injection ─────────────
+(function() {
+  const m = {
+    name: "K-Stock Tracker",
+    short_name: "K-Stock",
+    description: "외국인 매수 & DART 공시 AI 분석 트래커",
+    start_url: "./",
+    display: "standalone",
+    orientation: "portrait",
+    theme_color: "#0A1628",
+    background_color: "#0A1628",
+    lang: "ko",
+    icons: [
+      { src: "data:image/svg+xml;base64," + btoa(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230A1628'/><text x='256' y='320' text-anchor='middle' font-size='280' font-family='sans-serif'>📡</text></svg>`), sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(m)], { type: "application/manifest+json" });
+  document.getElementById("manifest-link").href = URL.createObjectURL(blob);
+})();
+
+// ───────────── Date Header ─────────────
+document.getElementById("header-date").innerHTML =
+  new Date().toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" }) + "<br><span style='color:var(--green);font-weight:600;font-size:12px'>● LIVE</span>";
+
+// ───────────── Storage ─────────────
+const STORE_KEY = "kst_pwa_v1";
+let history_data = [];
+try { history_data = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); } catch {}
+
+// ───────────── Tab Switch ─────────────
+let currentTab = "today";
+function switchTab(t) {
+  currentTab = t;
+  ["today","history"].forEach(x => {
+    document.getElementById("pane-" + x).style.display = x === t ? "block" : "none";
+    document.getElementById("tab-" + x).classList.toggle("active", x === t);
+  });
+  if (t === "history") renderHistory();
+}
+
+// ───────────── System Prompt ─────────────
+const SYSTEM = `You are a Korean stock market analyst. Use web_search to collect real-time data. Respond with ONLY valid JSON — no markdown, no backticks, no extra text.
+
+Search for:
+1. 오늘 코스피/코스닥 외국인 순매수 섹터 현황
+2. 오늘 외국인 순매수 상위 5개 종목
+3. 최근 BlackRock Vanguard Fidelity 한국 DART 대량보유 공시
+4. 오늘 코스피 코스닥 지수
+5. 추천 종목 뉴스
+
+Return ONLY this JSON (real data from search, null if unavailable):
+{
+  "date": "YYYY-MM-DD",
+  "kospi": {"value": 5800, "change_pct": 0.5},
+  "kosdaq": {"value": 820, "change_pct": -0.3},
+  "foreign_net_total": "3,420억 순매수",
+  "market_summary": "2-3문장 오늘 시장 동향",
+  "fear_greed": {"score": 65, "label": "탐욕"},
+  "sectors": [{"rank":1,"name":"반도체","flow_billion":2340,"change_pct":1.8,"trend":"매수","key_stock":"삼성전자"},{"rank":2,"name":"방산","flow_billion":890,"change_pct":3.2,"trend":"매수","key_stock":"한화에어로스페이스"},{"rank":3,"name":"자동차","flow_billion":430,"change_pct":0.9,"trend":"매수","key_stock":"현대차"},{"rank":4,"name":"바이오","flow_billion":210,"change_pct":2.1,"trend":"매수","key_stock":"삼성바이오"},{"rank":5,"name":"금융","flow_billion":-180,"change_pct":-0.4,"trend":"매도","key_stock":"KB금융"}],
+  "top_stocks": [{"rank":1,"name":"SK하이닉스","code":"000660","net_buy_billion":1240,"foreign_ratio":54.2,"ratio_change":"+0.3","high52w":false,"reason":"AI HBM 수요 급증"},{"rank":2,"name":"삼성전자","code":"005930","net_buy_billion":980,"foreign_ratio":52.1,"ratio_change":"+0.1","high52w":false,"reason":"반도체 업황 회복 기대"},{"rank":3,"name":"한화에어로스페이스","code":"012450","net_buy_billion":560,"foreign_ratio":18.7,"ratio_change":"+0.8","high52w":true,"reason":"유럽 방산 수출 급증"},{"rank":4,"name":"현대차","code":"005380","net_buy_billion":320,"foreign_ratio":28.4,"ratio_change":"+0.2","high52w":false,"reason":"EV 판매 호조"},{"rank":5,"name":"HLB","code":"028300","net_buy_billion":280,"foreign_ratio":8.3,"ratio_change":"+1.2","high52w":false,"reason":"FDA 승인 기대감"}],
+  "dart_filings": [{"filed_date":"2026-02-24","institution":"BlackRock","stock":"HLB","code":"028300","stake":"5.01%","action":"신규취득","prev_stake":"0%","note":"FDA 심사 앞두고 재진입"},{"filed_date":"2026-02-20","institution":"BlackRock","stock":"SK하이닉스","code":"000660","stake":"5.00%","action":"신규취득","prev_stake":"4.8%","note":"HBM 선두주자 지분 강화"}],
+  "recommendations": [{"rank":1,"name":"SK하이닉스","code":"000660","score":94,"signals":["외국인 순매수 1위","BlackRock 5% 공시","HBM 독점 공급"],"reason":"AI 데이터센터 향 HBM 공급 독점. 외국인 보유율 지속 증가. BlackRock 신규 진입으로 기관 신뢰 확인.","target_sector":"반도체","risk":"메모리 가격 사이클 하락 시 실적 변동"},{"rank":2,"name":"한화에어로스페이스","code":"012450","score":87,"signals":["외국인 순매수 3위","52주 신고가","유럽 수출 급증"],"reason":"글로벌 지정학 긴장으로 K-방산 수요 구조적 증가. 외국인 보유율 상승세 지속.","target_sector":"방산","risk":"지정학 리스크 완화 시 수요 둔화 가능"},{"rank":3,"name":"HLB","code":"028300","score":78,"signals":["BlackRock 신규 진입","FDA 심사 중","외국인 보유율 급증"],"reason":"BlackRock 5% 신규 취득은 FDA 승인 기대 선취매 신호. 바이오 카탈리스트 베팅.","target_sector":"바이오","risk":"FDA 불승인 시 주가 급락 고위험"}],
+  "news": [{"stock":"SK하이닉스","headline":"SK하이닉스 HBM4 양산 돌입, 엔비디아 독점 공급 확정","url":"https://n.news.naver.com/mnews/article/001/0015100001","source":"연합뉴스","date":"2026-03-19"},{"stock":"한화에어로스페이스","headline":"한화에어로스페이스, 폴란드 K9 추가 2조원 수출 계약 체결","url":"https://n.news.naver.com/mnews/article/003/0012500002","source":"뉴시스","date":"2026-03-18"},{"stock":"HLB","headline":"HLB 리보세라닙 FDA 결과 7월 예정, BlackRock 5% 취득 배경은","url":"https://n.news.naver.com/mnews/article/009/0012800003","source":"매일경제","date":"2026-03-17"}],
+  "additional_signals": [{"type":"프로그램매매","value":"차익 +1,200억 / 비차익 +890억","interpretation":"기관 차익매수 우세, 시장 안정적"},{"type":"공매도","value":"코스피 공매도 비중 3.2% (평균 하회)","interpretation":"숏 포지션 감소, 상승 우호적"},{"type":"환율","value":"USD/KRW 1,320원 (-0.3%)","interpretation":"원화 강세는 외국인 추가 매수 유인"}]
+}`;
+
+// ───────────── Steps ─────────────
+const STEPS = [
+  ["🔍 외국인 매수 데이터 수집 중...", "KRX · 네이버증권 실시간 크롤링"],
+  ["📋 DART 공시 추적 중...", "BlackRock · Vanguard · Fidelity 5% 공시"],
+  ["🤖 AI 종합 분석 중...", "섹터 흐름 + 개별 종목 시그널 결합"],
+  ["⭐ 추천 종목 산출 중...", "AI 스코어링 알고리즘 적용"],
+];
+let stepTimer = null, stepIdx = 0;
+
+// ───────────── Run Analysis ─────────────
+async function runAnalysis() {
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true;
+  document.getElementById("btn-text").textContent = "분석 중...";
+  document.getElementById("empty").style.display = "none";
+  document.getElementById("result-area").style.display = "none";
+  document.getElementById("error-area").innerHTML = "";
+  document.getElementById("loading-overlay").classList.add("show");
+
+  stepIdx = 0;
+  updateStep();
+  stepTimer = setInterval(() => { stepIdx = (stepIdx + 1) % STEPS.length; updateStep(); }, 2200);
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        system: SYSTEM,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: `분석 요청일: ${new Date().toISOString().split("T")[0]}\n오늘 한국 주식 외국인 매수, DART 공시, AI 추천 종목 JSON만 반환` }]
+      })
+    });
+    const json = await res.json();
+    const text = (json.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+    const clean = text.replace(/```json\n?|```/g,"").trim();
+    let d;
+    try { d = JSON.parse(clean); } catch {
+      const m = clean.match(/\{[\s\S]*\}/);
+      if (m) d = JSON.parse(m[0]); else throw new Error("JSON 파싱 실패");
+    }
+    renderResult(d);
+    history_data = [d, ...history_data.filter(h=>h.date!==d.date)].slice(0, 30);
+    localStorage.setItem(STORE_KEY, JSON.stringify(history_data));
+  } catch(e) {
+    document.getElementById("error-area").innerHTML =
+      `<div class="error-box">⚠️ 오류가 발생했습니다: ${e.message}<br><small>네트워크를 확인하거나 잠시 후 다시 시도해주세요.</small></div>`;
+    document.getElementById("empty").style.display = "block";
+  }
+
+  clearInterval(stepTimer);
+  document.getElementById("loading-overlay").classList.remove("show");
+  btn.disabled = false;
+  document.getElementById("btn-text").textContent = "다시 분석";
+}
+
+function updateStep() {
+  document.getElementById("step-text").textContent = STEPS[stepIdx][0];
+  document.getElementById("step-sub").textContent = STEPS[stepIdx][1];
+}
+
+// ───────────── Render Result ─────────────
+const SECTOR_COLORS = {
+  "반도체": ["#4B9EFF","var(--blue-dim)"],
+  "방산":   ["#FF8C42","rgba(255,140,66,.15)"],
+  "자동차": ["#FFB800","var(--amber-dim)"],
+  "바이오": ["#FF6B8A","rgba(255,107,138,.15)"],
+  "금융":   ["#A78BFA","var(--purple-dim)"],
+  "에너지": ["#00C896","var(--green-dim)"],
+  "철강":   ["#8899BB","rgba(136,153,187,.12)"],
+  "화학":   ["#34D399","rgba(52,211,153,.12)"],
+};
+function getSectorColor(name) {
+  for (const [k,v] of Object.entries(SECTOR_COLORS)) if (name?.includes(k)) return v;
+  return ["#8899BB","rgba(136,153,187,.12)"];
+}
+
+function scoreRingSVG(score) {
+  const r=22, circ=2*Math.PI*r, fill=(score/100)*circ;
+  const col = score>=85?"#00C896":score>=70?"#FFB800":"#FF5B5B";
+  return `<svg class="score-ring" width="56" height="56" viewBox="0 0 56 56">
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/>
+    <circle cx="28" cy="28" r="${r}" fill="none" stroke="${col}" stroke-width="4"
+      stroke-dasharray="${fill} ${circ-fill}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
+    <text x="28" y="28" text-anchor="middle" dominant-baseline="central" fill="${col}" font-size="13" font-weight="700" font-family="monospace">${score}</text>
+  </svg>`;
+}
+
+function renderResult(d) {
+  const el = document.getElementById("result-area");
+  const maxFlow = d.sectors ? Math.max(...d.sectors.map(s=>Math.abs(s.flow_billion||0)),1) : 1;
+
+  let html = `<div class="fade-up">`;
+
+  // ── Market Overview ──
+  const kospiUp = parseFloat(d.kospi?.change_pct||0)>=0;
+  const kosdaqUp = parseFloat(d.kosdaq?.change_pct||0)>=0;
+  html += `<div class="card">
+    <div class="sec-title">📊 시장 개요</div>
+    <div class="market-row">
+      <div class="market-idx">
+        <div class="market-name">KOSPI</div>
+        <div class="market-val ${kospiUp?'up':'dn'}">${(d.kospi?.value||'-').toLocaleString()}</div>
+        <div class="market-chg ${kospiUp?'up':'dn'}">${kospiUp?'▲':'▼'} ${Math.abs(parseFloat(d.kospi?.change_pct||0))}%</div>
+      </div>
+      <div class="market-idx" style="text-align:right">
+        <div class="market-name">KOSDAQ</div>
+        <div class="market-val ${kosdaqUp?'up':'dn'}" style="font-size:18px">${(d.kosdaq?.value||'-').toLocaleString()}</div>
+        <div class="market-chg ${kosdaqUp?'up':'dn'}">${kosdaqUp?'▲':'▼'} ${Math.abs(parseFloat(d.kosdaq?.change_pct||0))}%</div>
+      </div>
+    </div>
+    <div class="mkt-sum">${d.market_summary||''}</div>
+    <div class="badges-row">
+      ${d.foreign_net_total?`<span class="badge badge-green">💰 ${d.foreign_net_total}</span>`:''}
+      ${d.fear_greed?`<span class="badge ${d.fear_greed.score>70?'badge-red':d.fear_greed.score>40?'badge-amber':'badge-blue'}">🧠 심리 ${d.fear_greed.score} (${d.fear_greed.label})</span>`:''}
+    </div>
+  </div>`;
+
+  // ── Sectors ──
+  if (d.sectors?.length) {
+    html += `<div class="card"><div class="sec-title">📂 외국인 유입 섹터</div>`;
+    d.sectors.forEach((s,i) => {
+      const [col] = getSectorColor(s.name);
+      const pos = (s.flow_billion||0)>=0;
+      const pct = Math.min(Math.abs(s.flow_billion||0)/maxFlow*100,100);
+      html += `<div class="sector-row">
+        <span class="sector-rank">${s.rank||i+1}</span>
+        <span class="sector-name">${s.name}</span>
+        <div class="sector-bar-wrap"><div class="sector-bar" style="width:${pct}%;background:${pos?col:'#FF5B5B'}"></div></div>
+        <span class="sector-val" style="color:${pos?'var(--green)':'var(--red)'}">
+          ${pos?'+':''}${(s.flow_billion||0).toLocaleString()}억
+        </span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── Top Stocks ──
+  if (d.top_stocks?.length) {
+    html += `<div class="card"><div class="sec-title">🏆 외국인 순매수 상위 종목</div>`;
+    d.top_stocks.forEach((s,i) => {
+      const ratioUp = (s.ratio_change||"").startsWith("+");
+      html += `<div class="stock-item">
+        <div class="stock-rank ${i<2?'r'+(i+1):''}">${s.rank||i+1}</div>
+        <div class="stock-info">
+          <div class="stock-name">${s.name}<span class="stock-code">${s.code||''}</span>
+            ${s.high52w?`<span class="badge badge-amber">🔥 신고가</span>`:''}
+          </div>
+          <div class="stock-sub">${s.reason||''}</div>
+          <div class="stock-badges">
+            ${s.foreign_ratio?`<span class="badge badge-blue">외인 ${s.foreign_ratio}%</span>`:''}
+            ${s.ratio_change?`<span class="badge ${ratioUp?'badge-green':'badge-red'}">${s.ratio_change}%p</span>`:''}
+          </div>
+        </div>
+        <div class="stock-amount">
+          <div class="stock-net">+${(s.net_buy_billion||0).toLocaleString()}억</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── DART ──
+  if (d.dart_filings?.length) {
+    html += `<div class="card"><div class="sec-title">📋 DART 대량보유 공시</div>`;
+    d.dart_filings.forEach(f => {
+      const isNew = f.action?.includes("신규");
+      const isUp = f.action?.includes("증가");
+      const dotColor = isNew?"var(--green)":isUp?"var(--blue)":"var(--red)";
+      const badgeClass = isNew?"badge-green":isUp?"badge-blue":"badge-red";
+      html += `<div class="dart-item">
+        <div class="dart-dot" style="background:${dotColor}"></div>
+        <div class="dart-body">
+          <div class="dart-header">
+            <span class="dart-inst">${f.institution}</span>
+            <span class="dart-arrow">→</span>
+            <span class="dart-stock">${f.stock}</span>
+            ${f.code?`<span style="font-size:11px;color:var(--text3)">${f.code}</span>`:''}
+            <span class="badge ${badgeClass}">${f.action}</span>
+          </div>
+          <div class="dart-meta">${f.filed_date} · ${f.prev_stake&&f.prev_stake!=='0%'?f.prev_stake+' → ':''}${f.stake}</div>
+          ${f.note?`<div class="dart-note">💬 ${f.note}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── Recommendations ──
+  if (d.recommendations?.length) {
+    html += `<div class="sec-title" style="font-size:14px;margin-top:4px">⭐ AI 종합 추천 종목</div>`;
+    d.recommendations.forEach((r,i) => {
+      html += `<div class="rec-card ${i===0?'top':''}">
+        <div class="rec-top">
+          <div class="score-ring-wrap">${scoreRingSVG(r.score||75)}</div>
+          <div class="rec-name-wrap">
+            <div class="rec-name">${r.name}
+              ${r.code?`<span style="font-size:11px;color:var(--text3);font-weight:400">${r.code}</span>`:''}
+              ${i===0?`<span class="badge badge-green">최선호</span>`:''}
+            </div>
+            <div class="rec-sector">${r.target_sector||''}</div>
+          </div>
+        </div>
+        <div class="rec-signals">
+          ${(r.signals||[]).map(s=>`<span class="signal-chip">✓ ${s}</span>`).join('')}
+        </div>
+        <div class="rec-reason">${r.reason||''}</div>
+        ${r.risk?`<div class="rec-risk">⚠️ ${r.risk}</div>`:''}
+      </div>`;
+    });
+  }
+
+  // ── Additional Signals ──
+  if (d.additional_signals?.length) {
+    html += `<div class="card"><div class="sec-title">🔬 보조 지표</div>`;
+    d.additional_signals.forEach(s => {
+      html += `<div class="sig-row">
+        <span class="sig-type">${s.type}</span>
+        <div><div class="sig-val">${s.value}</div><div class="sig-interp">${s.interpretation}</div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ── News ──
+  if (d.news?.length) {
+    html += `<div class="card"><div class="sec-title">📰 관련 뉴스</div>`;
+    d.news.forEach(n => {
+      html += `<a href="${n.url}" target="_blank" rel="noopener" class="news-item" style="display:flex">
+        <div class="news-stock-badge"><span class="badge badge-blue">${n.stock}</span></div>
+        <div class="news-body">
+          <div class="news-headline">${n.headline||n.title}</div>
+          <div class="news-meta">${n.source} · ${n.date}</div>
+        </div>
+        <div class="news-arrow">→</div>
+      </a>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="disclaimer">⚠️ 본 분석은 투자 권유가 아닙니다.<br>AI 분석 결과이며 투자 결정은 본인 판단으로 하세요.</div>`;
+  html += `</div>`;
+
+  el.innerHTML = html;
+  el.style.display = "block";
+  el.scrollIntoView({ behavior: "smooth" });
+}
+
+// ───────────── Render History ─────────────
+function renderHistory() {
+  const el = document.getElementById("history-content");
+  if (!history_data.length) {
+    el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--text3);font-size:14px">아직 분석 기록이 없습니다</div>`;
+    return;
+  }
+
+  // Frequency
+  const freq = {};
+  history_data.forEach(d => (d.recommendations||[]).forEach(r => { freq[r.name]=(freq[r.name]||0)+1; }));
+  const topFreq = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxFreq = topFreq[0]?.[1]||1;
+
+  let html = `<div class="card">
+    <div class="sec-title">🔁 ${history_data.length}일간 최다 추천</div>`;
+  topFreq.forEach(([name,cnt],i) => {
+    html += `<div class="freq-row">
+      <span style="font-size:11px;color:var(--text3);width:14px;text-align:center">${i+1}</span>
+      <span class="freq-name ${i===0?'up':''}">${name}</span>
+      <div class="freq-bar-wrap"><div class="freq-bar" style="width:${cnt/maxFreq*100}%"></div></div>
+      <span class="freq-count">${cnt}/${history_data.length}일</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  history_data.forEach(d => {
+    const kospiUp = parseFloat(d.kospi?.change_pct||0)>=0;
+    html += `<div class="hist-day">
+      <div class="hist-day-header">
+        <span class="hist-date">${d.date}</span>
+        <span class="hist-kospi" style="color:${kospiUp?'var(--green)':'var(--red)'}">
+          KOSPI ${(d.kospi?.value||'-').toLocaleString()} ${kospiUp?'▲':'▼'}${Math.abs(parseFloat(d.kospi?.change_pct||0))}%
+        </span>
+      </div>
+      ${d.market_summary?`<div class="hist-summary-text">${d.market_summary.slice(0,70)}${d.market_summary.length>70?'...':''}</div>`:''}
+      <div class="hist-recs">
+        ${(d.recommendations||[]).map((r,i)=>`<span class="hist-rec-chip" style="background:${i===0?'var(--green-dim)':'rgba(255,255,255,.06)'};color:${i===0?'var(--green)':'var(--text2)'};">${i===0?'⭐ ':''}${r.name}</span>`).join('')}
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+</script>
+</body>
+</html>
