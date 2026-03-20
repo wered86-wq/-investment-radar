@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "투자기관 레이더",
+    "slug": "inv-radar-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0c10",
+    "splash": { "image": "./assets/icon.png", "backgroundColor": "#0a0c10", "resizeMode": "contain" },
+    "android": {
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#0a0c10" },
+      "package": "com.invradar.app",
+      "versionCode": 2,
+      "permissions": ["INTERNET"]
+    },
+    "extra": { "eas": { "projectId": "7daf1703-8a25-4847-ba9c-588e2eeca3ee" } }
+  }
+}
